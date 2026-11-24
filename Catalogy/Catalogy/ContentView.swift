@@ -1,21 +1,15 @@
-//
-//  ContentView.swift
-//  Catalogy
-//
-//  Created by Shardul Parwate on 23/11/26.
-//
-
 import SwiftUI
 
+/// Composition root for the UI: the only place that chooses the concrete API client.
 struct ContentView: View {
+    private let api: CatalogAPI
+
+    init(api: CatalogAPI = HTTPCatalogAPI.fromEnvironment()) {
+        self.api = api
+    }
+
     var body: some View {
-        VStack {
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundStyle(.tint)
-            Text("Hello, world!")
-        }
-        .padding()
+        HomeView(api: api)
     }
 }
 
