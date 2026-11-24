@@ -17,6 +17,13 @@ struct Product: Codable, Identifiable, Hashable {
     let rating: Rating
 
     var formattedPrice: String {
-        price.formatted(.currency(code: currency))
+        Self.formatPrice(price, currency: currency)
+    }
+
+    /// Formats in the currency's home locale so ₹ uses Indian digit grouping
+    /// (₹1,00,000.00), regardless of the device's region.
+    static func formatPrice(_ price: Decimal, currency: String) -> String {
+        let locale = currency.uppercased() == "INR" ? Locale(identifier: "en_IN") : Locale.current
+        return price.formatted(.currency(code: currency).locale(locale))
     }
 }

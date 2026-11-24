@@ -16,6 +16,11 @@ const envSchema = z.object({
   PRODUCT_CACHE_TTL_SECONDS: z.coerce.number().int().nonnegative().default(300),
   FEATURED_PRODUCT_IDS: idList,
   CATEGORY_TOP_RATED_COUNT: z.coerce.number().int().positive().default(3),
+  DISPLAY_CURRENCY: z
+    .string()
+    .regex(/^[A-Z]{3}$/, "must be an ISO 4217 code like INR")
+    .default("INR"),
+  USD_TO_DISPLAY_RATE: z.coerce.number().positive().default(83.5),
   EMAIL_TRANSPORT: z.enum(["smtp", "console"]).default("console"),
   SMTP_HOST: z.string().default("localhost"),
   SMTP_PORT: z.coerce.number().int().positive().default(1025),
@@ -36,6 +41,7 @@ export type AppConfig = {
   featuredProductIds: string[];
   featuredCount: number;
   categoryTopRatedCount: number;
+  currency: { display: string; usdRate: number };
   email: {
     transport: "smtp" | "console";
     smtp: { host: string; port: number; secure: boolean; user?: string; pass?: string };
@@ -58,6 +64,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     featuredProductIds: e.FEATURED_PRODUCT_IDS,
     featuredCount: 5,
     categoryTopRatedCount: e.CATEGORY_TOP_RATED_COUNT,
+    currency: { display: e.DISPLAY_CURRENCY, usdRate: e.USD_TO_DISPLAY_RATE },
     email: {
       transport: e.EMAIL_TRANSPORT,
       smtp: {

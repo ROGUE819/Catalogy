@@ -7,13 +7,18 @@ import {
 } from "./enquiries/EnquiryNotifier.js";
 import { EnquiryService } from "./enquiries/EnquiryService.js";
 import { CatalogService } from "./products/CatalogService.js";
+import { CurrencyConvertingProductSource } from "./products/CurrencyConvertingProductSource.js";
 import { FakeStoreProductSource } from "./products/FakeStoreProductSource.js";
 import { ProductImageService } from "./products/ProductImageService.js";
 
 // Composition root: the only place that knows which concrete adapters are used.
 const config = loadConfig();
 
-const source = new FakeStoreProductSource(config.fakeStoreBaseUrl, config.productCacheTtlMs);
+// Fake Store prices are USD; customers see the configured display currency (₹ by default).
+const source = new CurrencyConvertingProductSource(
+  new FakeStoreProductSource(config.fakeStoreBaseUrl, config.productCacheTtlMs),
+  { from: "USD", to: config.currency.display, rate: config.currency.usdRate },
+);
 const catalog = new CatalogService(source, {
   featuredProductIds: config.featuredProductIds,
   featuredCount: config.featuredCount,
@@ -31,4 +36,9 @@ const app = createApp({ catalog, enquiries: new EnquiryService(catalog, notifier
 
 app.listen(config.port, () => {
   console.info(`Catalogy API listening on http://localhost:${config.port} (email: ${config.email.transport})`);
+});
+
+// Surface unexpected failures instead of dying silently.
+process.on("unhandledRejection", (reason) => {
+  console.error("Unhandled promise rejection", reason);
 });

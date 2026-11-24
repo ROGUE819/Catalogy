@@ -31,4 +31,29 @@ final class SearchViewModelTests: XCTestCase {
         XCTAssertEqual(vm.term, "")
         XCTAssertFalse(vm.isShowingResults)
     }
+
+    func testFailureIsSurfacedAsMessage() async {
+        let api = StubCatalogAPI()
+        api.error = APIError.offline
+        let vm = SearchViewModel(api: api)
+        vm.term = "gold"
+        await vm.search()
+        guard case .failed(let message) = vm.results else { return XCTFail("expected failure") }
+        XCTAssertTrue(message.contains("offline"))
+    }
+
+    func testOverlongTermIsTruncatedToBackendLimit() async {
+        let api = StubCatalogAPI()
+        let vm = SearchViewModel(api: api)
+        vm.term = String(repeating: "a", count: 500)
+        await vm.search()
+        XCTAssertEqual(api.searchedTerms.first?.count, SearchViewModel.maxTermLength)
+    }
+
+    func testNoMatchesYieldsEmptyLoadedResult() async {
+        let vm = SearchViewModel(api: StubCatalogAPI())
+        vm.term = "zzz"
+        await vm.search()
+        XCTAssertEqual(vm.results.value?.isEmpty, true)
+    }
 }

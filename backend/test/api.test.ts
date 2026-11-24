@@ -80,6 +80,57 @@ describe("HTTP API", () => {
     const res = await request(setup({ source }).app).get("/api/products/featured").expect(502);
     expect(res.body.error).toMatch(/unavailable/);
   });
+
+  it("rejects malformed ids with 400", async () => {
+    const app = setup().app;
+    await request(app).get("/api/products/a%20b").expect(400);
+    await request(app).get(`/api/products/${"x".repeat(65)}`).expect(400);
+    await request(app).get("/api/categories/..%2Fetc/products").expect(400);
+  });
+
+  it("rejects over-long search terms with 400", async () => {
+    await request(setup().app).get("/api/products").query({ search: "a".repeat(101) }).expect(400);
+  });
+
+  it("returns an empty list for a blank search", async () => {
+    const res = await request(setup().app).get("/api/products").query({ search: "   " }).expect(200);
+    expect(res.body.products).toEqual([]);
+  });
+
+  it("returns JSON 404 for unknown routes and sets security headers", async () => {
+    const res = await request(setup().app).get("/nope").expect(404);
+    expect(res.body).toEqual({ error: "Not found" });
+    expect(res.headers["x-powered-by"]).toBeUndefined();
+    expect(res.headers["x-content-type-options"]).toBe("nosniff");
+  });
+
+  it("returns 502 when an image can't be fetched, without leaking details", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const catalog = new CatalogService(new InMemoryProductSource(sampleProducts), {
+      featuredProductIds: [], featuredCount: 5, categoryTopRatedCount: 2,
+    });
+    const images = new ProductImageService(vi.fn().mockRejectedValue(new TypeError("ECONNRESET")));
+    const app = createApp({ catalog, enquiries: new EnquiryService(catalog, { notify: async () => {} }), images });
+    const res = await request(app).get("/api/products/7/image").expect(502);
+    expect(JSON.stringify(res.body)).not.toMatch(/ECONNRESET/);
+  });
+});
+
+describe("rate limiting", () => {
+  it("limits enquiries per client", async () => {
+    const catalog = new CatalogService(new InMemoryProductSource(sampleProducts), {
+      featuredProductIds: [], featuredCount: 5, categoryTopRatedCount: 2,
+    });
+    const app = createApp({
+      catalog,
+      enquiries: new EnquiryService(catalog, { notify: async () => {} }),
+      images: new ProductImageService(vi.fn()),
+      enquiryRateLimit: 2,
+    });
+    await request(app).post("/api/enquiries").send(validEnquiry).expect(201);
+    await request(app).post("/api/enquiries").send(validEnquiry).expect(201);
+    await request(app).post("/api/enquiries").send(validEnquiry).expect(429);
+  });
 });
 
 describe("POST /api/enquiries", () => {
@@ -115,6 +166,30 @@ describe("POST /api/enquiries", () => {
       .set("Content-Type", "application/json")
       .send("{bad json")
       .expect(400);
+  });
+
+  it("returns 413 for oversized bodies", async () => {
+    await request(setup().app)
+      .post("/api/enquiries")
+      .send({ ...validEnquiry, message: "x".repeat(20_000) })
+      .expect(413);
+  });
+
+  it("rejects bad phone numbers and over-long messages", async () => {
+    const { app, sent } = setup();
+    const res = await request(app)
+      .post("/api/enquiries")
+      .send({ ...validEnquiry, phone: "call me<script>", message: "y".repeat(2001) })
+      .expect(400);
+    expect(res.body.fields.map((f: { field: string }) => f.field).sort()).toEqual(["message", "phone"]);
+    expect(sent).toHaveLength(0);
+  });
+
+  it("treats blank optional fields as absent", async () => {
+    const { app, sent } = setup();
+    await request(app).post("/api/enquiries").send({ ...validEnquiry, phone: "  ", message: "" }).expect(201);
+    expect(sent[0]?.phone).toBeUndefined();
+    expect(sent[0]?.message).toBeUndefined();
   });
 
   it("returns 502 when email delivery fails", async () => {

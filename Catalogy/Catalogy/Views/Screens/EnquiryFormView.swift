@@ -46,11 +46,13 @@ struct EnquiryFormView: View {
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
                         .accessibilityIdentifier("emailField")
-                    FormField(title: "Phone (optional)", systemImage: "phone", text: $viewModel.phone)
+                    FormField(title: "Phone (optional)", systemImage: "phone", text: $viewModel.phone,
+                              error: viewModel.phoneError, showsError: !viewModel.phone.isEmpty)
                         .textContentType(.telephoneNumber)
                         .keyboardType(.phonePad)
                     FormField(title: "Message (optional)", systemImage: "text.bubble",
-                              text: $viewModel.message, axis: .vertical)
+                              text: $viewModel.message, error: viewModel.messageError,
+                              showsError: viewModel.messageError != nil, axis: .vertical)
                 }
 
                 if case .failed(let message) = viewModel.status {

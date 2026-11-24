@@ -10,6 +10,7 @@ final class CatalogyUITests: XCTestCase {
     @MainActor
     func testBrowseSearchAndEnquire() throws {
         let app = XCUIApplication()
+        app.launchArguments = ["-skipSplash"]
         app.launch()
 
         // Home shows featured products

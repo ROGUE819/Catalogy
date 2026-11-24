@@ -16,6 +16,7 @@
       "path": "Catalogy",
       "children": [
         { "path": "Assets.xcassets", "target-membership": [ "Catalogy/resources" ] },
+        { "path": "Info.plist" },
         { "path": "CatalogyApp.swift", "target-membership": [ "Catalogy/compile-sources" ] },
         { "path": "ContentView.swift", "target-membership": [ "Catalogy/compile-sources" ] },
         {
@@ -95,6 +96,7 @@
               { "path": "ProductDetailView.swift", "target-membership": [ "Catalogy/compile-sources" ] },
               { "path": "EnquiryFormView.swift", "target-membership": [ "Catalogy/compile-sources" ] },
               { "path": "ThankYouView.swift", "target-membership": [ "Catalogy/compile-sources" ] },
+              { "path": "SplashView.swift", "target-membership": [ "Catalogy/compile-sources" ] },
               ],
             },
           ],
@@ -108,6 +110,7 @@
         { "path": "SearchViewModelTests.swift", "target-membership": [ "CatalogyTests/compile-sources" ] },
         { "path": "EnquiryViewModelTests.swift", "target-membership": [ "CatalogyTests/compile-sources" ] },
         { "path": "ModelDecodingTests.swift", "target-membership": [ "CatalogyTests/compile-sources" ] },
+        { "path": "FormattingAndErrorTests.swift", "target-membership": [ "CatalogyTests/compile-sources" ] },
         {
           "kind": "group",
           "path": "Support",
@@ -154,7 +157,7 @@
         "GENERATE_INFOPLIST_FILE": "YES",
         "INFOPLIST_KEY_UIApplicationSceneManifest_Generation": "YES",
         "INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents": "YES",
-        "INFOPLIST_KEY_UILaunchScreen_Generation": "YES",
+        "INFOPLIST_FILE": "Catalogy/Info.plist",
         "INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad": "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight",
         "INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone": "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight",
         "LD_RUNPATH_SEARCH_PATHS": [

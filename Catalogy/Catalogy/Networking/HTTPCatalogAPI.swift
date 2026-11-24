@@ -28,7 +28,7 @@ final class HTTPCatalogAPI: CatalogAPI {
     }
 
     func categoryPage(id: String) async throws -> CategoryPage {
-        try await get(CategoryPage.self, path: "categories/\(id)/products")
+        try await get(CategoryPage.self, path: "categories/\(Self.pathSegment(id))/products")
     }
 
     func search(_ term: String) async throws -> [Product] {
@@ -36,7 +36,12 @@ final class HTTPCatalogAPI: CatalogAPI {
     }
 
     func product(id: String) async throws -> Product {
-        try await get(ProductEnvelope.self, path: "products/\(id)").product
+        try await get(ProductEnvelope.self, path: "products/\(Self.pathSegment(id))").product
+    }
+
+    /// Percent-encodes an id so it can't change the path (e.g. "../" or "?").
+    static func pathSegment(_ id: String) -> String {
+        id.addingPercentEncoding(withAllowedCharacters: .alphanumerics.union(CharacterSet(charactersIn: "-_"))) ?? id
     }
 
     func submitEnquiry(_ enquiry: EnquiryRequest) async throws -> EnquiryConfirmation {
@@ -74,6 +79,15 @@ final class HTTPCatalogAPI: CatalogAPI {
         let response: URLResponse
         do {
             (data, response) = try await session.data(for: request)
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch let error as URLError {
+            switch error.code {
+            case .cancelled: throw CancellationError()
+            case .notConnectedToInternet, .networkConnectionLost, .dataNotAllowed: throw APIError.offline
+            case .timedOut: throw APIError.timeout
+            default: throw APIError.network
+            }
         } catch {
             throw APIError.network
         }
@@ -83,6 +97,7 @@ final class HTTPCatalogAPI: CatalogAPI {
             let body = try? decoder.decode(ErrorBody.self, from: data)
             switch status {
             case 404: throw APIError.notFound
+            case 429: throw APIError.rateLimited
             case 400 where body?.fields != nil: throw APIError.validation(body?.fields ?? [])
             default: throw APIError.server(body?.error ?? "Unexpected server error (\(status)).")
             }

@@ -15,6 +15,8 @@ export type AppDependencies = {
   images: ProductImageService;
   /** Max enquiries per IP per 15 minutes. */
   enquiryRateLimit?: number;
+  /** Max API requests per IP per minute (all endpoints). */
+  apiRateLimit?: number;
 };
 
 type AsyncHandler = (req: Request, res: Response) => Promise<void>;
@@ -26,10 +28,17 @@ const handle =
 
 const searchQuerySchema = z.object({ search: z.string().trim().max(100).optional() });
 
+/** Ids are short slugs/numbers; reject anything else before it reaches the domain. */
+const ID_PATTERN = /^[A-Za-z0-9_-]{1,64}$/;
+const validId = (req: Request, res: Response, next: NextFunction): void => {
+  if (ID_PATTERN.test(String(req.params.id))) return next();
+  res.status(400).json({ error: "Invalid id" });
+};
+
 /** Absolute API base for this request, used to build image URLs clients can load. */
 const apiBase = (req: Request) => `${req.protocol}://${req.get("host")}/api`;
 
-export function createApp({ catalog, enquiries, images, enquiryRateLimit = 10 }: AppDependencies) {
+export function createApp({ catalog, enquiries, images, enquiryRateLimit = 10, apiRateLimit = 300 }: AppDependencies) {
   const app = express();
   app.disable("x-powered-by");
   app.use(helmet());
@@ -40,6 +49,7 @@ export function createApp({ catalog, enquiries, images, enquiryRateLimit = 10 }:
   });
 
   const api = express.Router();
+  api.use(rateLimit({ windowMs: 60 * 1000, limit: apiRateLimit, standardHeaders: "draft-7", legacyHeaders: false }));
 
   api.get(
     "/products/featured",
@@ -63,6 +73,7 @@ export function createApp({ catalog, enquiries, images, enquiryRateLimit = 10 }:
 
   api.get(
     "/products/:id",
+    validId,
     handle(async (req, res) => {
       res.json({ product: presentProduct(await catalog.product(String(req.params.id)), apiBase(req)) });
     }),
@@ -70,6 +81,7 @@ export function createApp({ catalog, enquiries, images, enquiryRateLimit = 10 }:
 
   api.get(
     "/products/:id/image",
+    validId,
     handle(async (req, res) => {
       const product = await catalog.product(String(req.params.id));
       const image = await images.get(product.imageUrl);
@@ -88,6 +100,7 @@ export function createApp({ catalog, enquiries, images, enquiryRateLimit = 10 }:
 
   api.get(
     "/categories/:id/products",
+    validId,
     handle(async (req, res) => {
       const page = await catalog.categoryPage(String(req.params.id));
       const base = apiBase(req);
@@ -126,6 +139,10 @@ export function createApp({ catalog, enquiries, images, enquiryRateLimit = 10 }:
     }
     if (error instanceof SyntaxError && "body" in error) {
       res.status(400).json({ error: "Malformed JSON body" });
+      return;
+    }
+    if (typeof error === "object" && error !== null && "type" in error && error.type === "entity.too.large") {
+      res.status(413).json({ error: "Request body too large" });
       return;
     }
     if (error instanceof UpstreamError) {
