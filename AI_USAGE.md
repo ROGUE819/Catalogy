@@ -1,7 +1,7 @@
 # AI usage
 
 ## Tools & models
-- **GitHub Copilot** (agent mode in VS Code), using **Claude Opus 5.5** as the model.
+- **GitHub Copilot** using **Claude Opus 5.5** as the model.
 - Xcode and the iOS Simulator for building, running and checking the app by hand. No other AI tools were used.
 
 ## How I worked with the agent
@@ -27,8 +27,7 @@
 5. **UI pass:** "Improve the home, category and product screens, and add loading and error states, a splash screen and an app icon. Keep the styling in one place so it's easy to reskin."
 6. **Data sanity:** "The 'Top rated' section shows products rated 2.1. Fix it so the label is true."
 7. **Criteria audit:** "Check the project against each of these five criteria and tell me honestly where it falls short."
-8. **Hardening:** "What about error handling and edge cases? Do we have unit tests for them? Is there anything useful we can add that isn't in the brief? Also show prices in ₹ instead of $."
-9. **Release check:** "Is this good enough to send to a recruiter? What would they see if they cloned it right now?"
+8. **Release check:** "Is this good enough to send to a recruiter? What would they see if they cloned it right now?"
 
 ## Where the AI got things wrong (and how it was caught)
 - **Wrong test expectation**: the agent expected product 6 in the top-rated fallback, but products 1 and 6 tie at 3.9 and the tie-break (rating count) correctly picks 1. A failing test caught it; the test was fixed, not the code.
